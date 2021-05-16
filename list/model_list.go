@@ -2,13 +2,14 @@ package timelist
 
 import (
 	"log"
+	"time"
 )
 
 type Payload struct {
-	Symbol     string
-	UNIXTimeMs int64 // miliseconds
-	Price      float64
-	Quantity   float64
+	Symbol              string
+	UNIXTimeMiliseconds int64
+	Price               float64
+	Quantity            float64
 }
 
 type node struct {
@@ -22,6 +23,7 @@ type LinkedList struct {
 	Trades          chan Payload
 	Stop            chan struct{}
 	TimeSpanSeconds int
+	timeOffset      int64
 }
 
 func NewLinkedList(seconds int, payload chan Payload, stop chan struct{}) *LinkedList {
@@ -30,6 +32,7 @@ func NewLinkedList(seconds int, payload chan Payload, stop chan struct{}) *Linke
 		Trades:          payload,
 		Stop:            stop,
 		TimeSpanSeconds: seconds,
+		timeOffset:      3 * 3600 * 1000, // offset to GMT in miliseconds
 	}
 }
 
@@ -63,17 +66,24 @@ func (l *LinkedList) prepend(n *node) {
 }
 
 func (l *LinkedList) walkList() {
-	next := l.Head
+	currentNode := l.Head
 
 	length := 1.
-	sum := l.Head.Payload.Quantity
+	sum := currentNode.Payload.Quantity
 
-	for next != nil {
-		sum = sum + next.Payload.Quantity
+	for currentNode.nextNode != nil {
+		if currentNode.Payload.UNIXTimeMiliseconds < (time.Now().Unix()*1000 - int64(l.TimeSpanSeconds*60000) - l.timeOffset) {
+			log.Println("found aged node")
+
+			currentNode.nextNode = nil
+			break
+		}
+
+		sum = sum + currentNode.Payload.Quantity
 		length++
 
-		next = next.nextNode
+		currentNode = currentNode.nextNode // advance in list
 	}
 
-	log.Printf("%.3f --- %.f \n", sum/length, length)
+	log.Printf("%d ---- %.3f --- %.f \n", time.Now().Unix()*1000, sum/length, length)
 }

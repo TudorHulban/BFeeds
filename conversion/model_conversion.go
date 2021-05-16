@@ -40,10 +40,10 @@ loop:
 				result := gjson.GetManyBytes(payload, "s", "T", "q", "p")
 
 				list.Trades <- timelist.Payload{
-					Symbol:     result[0].String(),
-					UNIXTimeMs: result[1].Int(),
-					Price:      result[2].Float(),
-					Quantity:   result[3].Float(),
+					Symbol:              result[0].String(),
+					UNIXTimeMiliseconds: result[1].Int(),
+					Price:               result[2].Float(),
+					Quantity:            result[3].Float(),
 				}
 			}
 		}
