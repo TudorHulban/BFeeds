@@ -3,6 +3,8 @@ package conversion
 import (
 	"fmt"
 	"log"
+
+	"github.com/tidwall/gjson"
 )
 
 type Trade struct {
@@ -18,8 +20,6 @@ func NewTrade(feed chan []byte, stop chan struct{}) *Trade {
 }
 
 func (t *Trade) Convert() {
-	// TODO: add JSON parser
-
 loop:
 	for {
 		select {
@@ -31,13 +31,9 @@ loop:
 
 		case payload := <-t.Feed:
 			{
-				// parsedValues, errParse := p.ParseBytes(payload)
-				// if errParse != nil {
-				// 	fmt.Println("conversion glitch:", errParse)
-				// 	return
-				// }
+				result := gjson.GetManyBytes(payload, "s", "T", "q", "p")
 
-				go fmt.Println(string(payload))
+				go fmt.Println(result)
 			}
 		}
 	}
