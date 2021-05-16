@@ -1,7 +1,6 @@
 package timelist
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -12,27 +11,25 @@ type Payload struct {
 	Quantity   float64
 }
 
-type Node struct {
+type node struct {
 	Payload
 
-	nextNode *Node
+	nextNode *node
 }
 
 type LinkedList struct {
-	Head            *Node
+	Head            *node
 	Trades          chan Payload
 	Stop            chan struct{}
 	TimeSpanSeconds int
-
-	length          int
-	averageQuantity float64
 }
 
 func NewLinkedList(seconds int, payload chan Payload, stop chan struct{}) *LinkedList {
 	return &LinkedList{
-		TimeSpanSeconds: seconds,
+		Head:            &node{},
 		Trades:          payload,
 		Stop:            stop,
+		TimeSpanSeconds: seconds,
 	}
 }
 
@@ -48,22 +45,35 @@ loop:
 
 		case payload := <-l.Trades:
 			{
-				go fmt.Println(payload)
+				// go fmt.Println(payload)
+
+				l.prepend(&node{
+					Payload: payload,
+				})
 			}
 		}
 	}
 }
 
-func (l *LinkedList) prepend(n *Node) {
+func (l *LinkedList) prepend(n *node) {
 	n.nextNode = l.Head
 	l.Head = n
+
+	l.walkList()
 }
 
 func (l *LinkedList) walkList() {
 	next := l.Head
 
+	length := 1.
+	sum := l.Head.Payload.Quantity
+
 	for next != nil {
-		fmt.Printf("%d ", next.Payload)
+		sum = sum + next.Payload.Quantity
+		length++
+
 		next = next.nextNode
 	}
+
+	log.Printf("%.3f --- %.f \n", sum/length, length)
 }
