@@ -21,9 +21,9 @@ func NewTrade(feed chan []byte, stop chan struct{}) *Trade {
 
 func (t *Trade) Convert() {
 	payload := make(chan timelist.Payload)
-	stopConversion := make(chan struct{})
+	stop := make(chan struct{})
 
-	list := timelist.NewLinkedList(1, payload, stopConversion)
+	list := timelist.NewLinkedList(1, payload, stop)
 	go list.Listen()
 
 loop:
@@ -51,5 +51,5 @@ loop:
 
 	list.Stop <- struct{}{}
 	close(payload)
-	close(stopConversion)
+	close(stop)
 }

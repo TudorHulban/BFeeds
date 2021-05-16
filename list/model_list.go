@@ -1,6 +1,7 @@
 package timelist
 
 import (
+	"fmt"
 	"log"
 	"time"
 )
@@ -62,17 +63,19 @@ func (l *LinkedList) prepend(n *node) {
 	n.nextNode = l.Head
 	l.Head = n
 
-	l.walkList()
+	dropAfterTimeMiliseconds := time.Now().Unix()*1000 - l.timeOffset - int64(l.TimeSpanSeconds*1000)
+
+	l.walkList(dropAfterTimeMiliseconds)
 }
 
-func (l *LinkedList) walkList() {
+func (l *LinkedList) walkList(dropAfter int64) {
 	currentNode := l.Head
 
-	length := 1.
-	sum := currentNode.Payload.Quantity
+	var length float64
+	var sum float64
 
 	for currentNode.nextNode != nil {
-		if currentNode.Payload.UNIXTimeMiliseconds < (time.Now().Unix()*1000 - int64(l.TimeSpanSeconds*60000) - l.timeOffset) {
+		if dropAfter > currentNode.Payload.UNIXTimeMiliseconds {
 			log.Println("found aged node")
 
 			currentNode.nextNode = nil
@@ -86,4 +89,22 @@ func (l *LinkedList) walkList() {
 	}
 
 	log.Printf("%d ---- %.3f --- %.f \n", time.Now().Unix()*1000, sum/length, length)
+}
+
+func (l *LinkedList) printData() {
+	next := l.Head
+
+	for next != nil {
+		fmt.Println(next.Payload)
+		next = next.nextNode
+	}
+
+	fmt.Print("\n")
+}
+
+func (l *LinkedList) cleanUp() {
+	close(l.Trades)
+	close(l.Stop)
+
+	l.printData()
 }
