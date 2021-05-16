@@ -24,9 +24,11 @@ type Client struct {
 
 	Stop      chan struct{}
 	interrupt chan os.Signal
+
+	retentionSeconds int
 }
 
-func NewClient(cfg Config) (*Client, error) {
+func NewClient(cfg Config, retentionSeconds int) (*Client, error) {
 	url, errParse := url.Parse(cfg.URI)
 	if errParse != nil {
 		return nil, errParse
@@ -41,10 +43,11 @@ func NewClient(cfg Config) (*Client, error) {
 	signal.Notify(interrupt, os.Interrupt)
 
 	return &Client{
-		connection: conn,
-		URL:        *url,
-		Stop:       make(chan struct{}),
-		interrupt:  interrupt,
+		connection:       conn,
+		URL:              *url,
+		Stop:             make(chan struct{}),
+		interrupt:        interrupt,
+		retentionSeconds: retentionSeconds,
 	}, nil
 }
 
@@ -52,7 +55,7 @@ func (c *Client) ReadMessages() {
 	payload := make(chan []byte)
 	stopConversion := make(chan struct{})
 
-	converter := conversion.NewTrade(payload, stopConversion)
+	converter := conversion.NewTrade(payload, stopConversion, c.retentionSeconds)
 	go converter.Convert()
 
 loop:

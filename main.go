@@ -13,7 +13,7 @@ func main() {
 		URI: urlBinance,
 	}
 
-	client, errNew := exchange.NewClient(cfg)
+	client, errNew := exchange.NewClient(cfg, 300)
 	if errNew != nil {
 		fmt.Println(errNew)
 		os.Exit(1)

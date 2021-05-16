@@ -49,8 +49,6 @@ loop:
 
 		case payload := <-l.Trades:
 			{
-				// go fmt.Println(payload)
-
 				l.prepend(&node{
 					Payload: payload,
 				}, locationOffsetMiliseconds)
@@ -87,7 +85,8 @@ func (l *LinkedList) walkList(dropAfter int64) {
 
 	}
 
-	log.Printf("%d ---- %.3f --- %.f \n", time.Now().Unix()*1000, sum/length, length)
+	// go fmt.Printf("%d ---- %.3f --- %.f \n", time.Now().Unix()*1000, sum/length, length)
+	go fmt.Printf("%.3f --- %.f \n", sum/length, length)
 }
 
 // printData Method only for testing.

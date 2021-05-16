@@ -8,14 +8,16 @@ import (
 )
 
 type Trade struct {
-	Feed chan []byte
-	Stop chan struct{}
+	Feed             chan []byte
+	Stop             chan struct{}
+	retentionSeconds int
 }
 
-func NewTrade(feed chan []byte, stop chan struct{}) *Trade {
+func NewTrade(feed chan []byte, stop chan struct{}, retentionSeconds int) *Trade {
 	return &Trade{
-		Feed: feed,
-		Stop: stop,
+		Feed:             feed,
+		Stop:             stop,
+		retentionSeconds: retentionSeconds,
 	}
 }
 
@@ -23,7 +25,7 @@ func (t *Trade) Convert() {
 	payload := make(chan timelist.Payload)
 	stop := make(chan struct{})
 
-	list := timelist.NewLinkedList(1, payload, stop)
+	list := timelist.NewLinkedList(t.retentionSeconds, payload, stop)
 	go list.Listen(0)
 
 loop:
