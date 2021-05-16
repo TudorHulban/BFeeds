@@ -1,7 +1,7 @@
 package conversion
 
 import (
-	"fmt"
+	"bnb/list"
 	"log"
 
 	"github.com/tidwall/gjson"
@@ -20,6 +20,12 @@ func NewTrade(feed chan []byte, stop chan struct{}) *Trade {
 }
 
 func (t *Trade) Convert() {
+	payload := make(chan timelist.Payload)
+	stopConversion := make(chan struct{})
+
+	list := timelist.NewLinkedList(1, payload, stopConversion)
+	go list.Listen()
+
 loop:
 	for {
 		select {
@@ -33,8 +39,17 @@ loop:
 			{
 				result := gjson.GetManyBytes(payload, "s", "T", "q", "p")
 
-				go fmt.Println(result)
+				list.Trades <- timelist.Payload{
+					Symbol:     result[0].String(),
+					UNIXTimeMs: result[1].Int(),
+					Price:      result[2].Float(),
+					Quantity:   result[3].Float(),
+				}
 			}
 		}
 	}
+
+	list.Stop <- struct{}{}
+	close(payload)
+	close(stopConversion)
 }
