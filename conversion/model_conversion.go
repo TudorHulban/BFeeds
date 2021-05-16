@@ -24,7 +24,7 @@ func (t *Trade) Convert() {
 	stop := make(chan struct{})
 
 	list := timelist.NewLinkedList(1, payload, stop)
-	go list.Listen()
+	go list.Listen(0)
 
 loop:
 	for {
@@ -50,6 +50,5 @@ loop:
 	}
 
 	list.Stop <- struct{}{}
-	close(payload)
-	close(stop)
+	list.CleanUp()
 }

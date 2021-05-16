@@ -24,7 +24,6 @@ type LinkedList struct {
 	Trades          chan Payload
 	Stop            chan struct{}
 	TimeSpanSeconds int
-	timeOffset      int64
 }
 
 func NewLinkedList(seconds int, payload chan Payload, stop chan struct{}) *LinkedList {
@@ -33,11 +32,12 @@ func NewLinkedList(seconds int, payload chan Payload, stop chan struct{}) *Linke
 		Trades:          payload,
 		Stop:            stop,
 		TimeSpanSeconds: seconds,
-		timeOffset:      3 * 3600 * 1000, // offset to GMT in miliseconds
 	}
 }
 
-func (l *LinkedList) Listen() {
+// Listen Method listens for events coming with different offsets.
+// For GMT: 3 * 3600 * 1000 = 10800000
+func (l *LinkedList) Listen(locationOffsetMiliseconds int64) {
 loop:
 	for {
 		select {
@@ -53,17 +53,17 @@ loop:
 
 				l.prepend(&node{
 					Payload: payload,
-				})
+				}, locationOffsetMiliseconds)
 			}
 		}
 	}
 }
 
-func (l *LinkedList) prepend(n *node) {
+func (l *LinkedList) prepend(n *node, locationOffsetMiliseconds int64) {
 	n.nextNode = l.Head
 	l.Head = n
 
-	dropAfterTimeMiliseconds := time.Now().Unix()*1000 - l.timeOffset - int64(l.TimeSpanSeconds*1000)
+	dropAfterTimeMiliseconds := time.Now().Unix()*1000 - locationOffsetMiliseconds - int64(l.TimeSpanSeconds*1000)
 
 	l.walkList(dropAfterTimeMiliseconds)
 }
@@ -75,9 +75,7 @@ func (l *LinkedList) walkList(dropAfter int64) {
 	var sum float64
 
 	for currentNode.nextNode != nil {
-		if dropAfter > currentNode.Payload.UNIXTimeMiliseconds {
-			log.Println("found aged node")
-
+		if dropAfter > currentNode.UNIXTimeMiliseconds {
 			currentNode.nextNode = nil
 			break
 		}
@@ -86,25 +84,35 @@ func (l *LinkedList) walkList(dropAfter int64) {
 		length++
 
 		currentNode = currentNode.nextNode // advance in list
+
 	}
 
 	log.Printf("%d ---- %.3f --- %.f \n", time.Now().Unix()*1000, sum/length, length)
 }
 
+// printData Method only for testing.
 func (l *LinkedList) printData() {
-	next := l.Head
+	currentNode := l.Head
 
-	for next != nil {
-		fmt.Println(next.Payload)
-		next = next.nextNode
+	var length int
+
+	fmt.Print("Printing List\n")
+
+	for currentNode.nextNode != nil {
+		fmt.Println(currentNode.Payload)
+
+		length++
+		currentNode = currentNode.nextNode
 	}
 
 	fmt.Print("\n")
+	fmt.Print("Length: ", length)
+	fmt.Print("\n")
 }
 
-func (l *LinkedList) cleanUp() {
+func (l *LinkedList) CleanUp() {
 	close(l.Trades)
 	close(l.Stop)
 
-	l.printData()
+	// l.printData()
 }
