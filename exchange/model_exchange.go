@@ -1,7 +1,7 @@
 package exchange
 
 import (
-	"bnb/conversion"
+	"bnb/converters"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,7 +30,7 @@ type Client struct {
 	spoolTo          io.Writer
 }
 
-func NewClient(cfg Config, retentionSeconds int, spoolTo io.Writer) (*Client, error) {
+func NewExchange(cfg Config, retentionSeconds int, spoolTo io.Writer) (*Client, error) {
 	url, errParse := url.Parse(cfg.URI)
 	if errParse != nil {
 		return nil, errParse
@@ -54,20 +54,24 @@ func NewClient(cfg Config, retentionSeconds int, spoolTo io.Writer) (*Client, er
 	}, nil
 }
 
-func (c *Client) ReadMessages() {
-	payload := make(chan []byte)
-	defer close(payload)
+// ReadMessages Method reads websocket feed and pushes it to a converter payload channel.
+func (c *Client) ReadMessages(conv converters.IConverter) {
+	// payload := make(chan []byte)
+	// defer close(payload)
 
-	stopConversion := make(chan struct{})
-	defer close(stopConversion)
+	// stopConversion := make(chan struct{})
+	// defer close(stopConversion)
 
-	converter := conversion.NewTrade(payload, stopConversion, c.retentionSeconds, c.spoolTo)
-	defer func() {
-		converter.Stop <- struct{}{}
-		c.Stop <- struct{}{}
-	}()
+	// converter := conversion.NewTrade(payload, stopConversion, c.retentionSeconds, c.spoolTo)
+	// defer func() {
+	// 	converter.Stop <- struct{}{}
+	// 	c.Stop <- struct{}{}
+	// }()
 
-	go converter.Convert()
+	converterPayload := conv.Payload()
+	defer close(converterPayload)
+
+	go conv.Convert()
 
 loop:
 	for {
@@ -85,7 +89,7 @@ loop:
 					return
 				}
 
-				converter.Feed <- message
+				converterPayload <- message
 			}
 		}
 	}

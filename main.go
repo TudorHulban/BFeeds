@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bnb/converters"
+	"bnb/converters/trade"
 	"bnb/exchange"
 	"fmt"
 	"os"
@@ -9,11 +11,14 @@ import (
 const urlBinance = "wss://stream.binance.com:9443/ws/bnbusdt@trade"
 
 func main() {
+	// creation of a trade converter
+	conv := trade.NewTradeConverterr()
+
 	cfg := exchange.Config{
 		URI: urlBinance,
 	}
 
-	client, errNew := exchange.NewClient(cfg, 3, os.Stdout)
+	client, errNew := exchange.NewExchange(cfg, 3, os.Stdout)
 	if errNew != nil {
 		fmt.Println(errNew)
 		os.Exit(1)

@@ -1,37 +1,32 @@
 package timelist
 
 import (
+	"bnb/processors"
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 	"time"
 )
 
-type Payload struct {
-	Symbol              string
-	UNIXTimeMiliseconds int64
-	Price               float64
-	Quantity            float64
-}
-
 type node struct {
-	Payload
+	processors.PayloadTrade
 
 	nextNode *node
 }
 
 type LinkedList struct {
 	Head            *node
-	Trades          chan Payload
+	Payload         chan processors.PayloadTrade
 	Stop            chan struct{}
 	TimeSpanSeconds int
 	spoolTo         io.Writer
 }
 
-func NewLinkedList(seconds int, spoolTo io.Writer, payload chan Payload, stop chan struct{}) *LinkedList {
+func NewLinkedList(seconds int, spoolTo io.Writer, payload chan processors.PayloadTrade, stop chan struct{}) *LinkedList {
 	return &LinkedList{
 		Head:            &node{},
-		Trades:          payload,
+		Payload:         payload,
 		Stop:            stop,
 		TimeSpanSeconds: seconds,
 		spoolTo:         spoolTo,
@@ -50,14 +45,34 @@ loop:
 				break loop
 			}
 
-		case payload := <-l.Trades:
+		case payload := <-l.Payload:
 			{
 				l.prepend(&node{
-					Payload: payload,
+					PayloadTrade: payload,
 				}, locationOffsetMiliseconds)
 			}
 		}
 	}
+}
+
+// SendBufferTo Method would send current boofer to the writer.
+func (l *LinkedList) SendBufferTo(w io.Writer) {
+	currentNode := l.Head
+
+	var length int
+
+	w.Write([]byte("Printing Buffer\n"))
+
+	for currentNode.nextNode != nil {
+		w.Write([]byte(fmt.Sprintf("%v", currentNode.PayloadTrade)))
+
+		length++
+		currentNode = currentNode.nextNode
+	}
+
+	w.Write([]byte("\n"))
+	w.Write([]byte("Length: " + strconv.Itoa(length)))
+	w.Write([]byte("\n"))
 }
 
 func (l *LinkedList) prepend(n *node, locationOffsetMiliseconds int64) {
@@ -66,7 +81,7 @@ func (l *LinkedList) prepend(n *node, locationOffsetMiliseconds int64) {
 
 	dropAfterTimeMiliseconds := time.Now().Unix()*1000 - locationOffsetMiliseconds - int64(l.TimeSpanSeconds*1000)
 
-	l.walkList(dropAfterTimeMiliseconds)
+	l.walkList(dropAfterTimeMiliseconds) // synchronous to preserve data
 }
 
 // walkList Internal method drops data past specified point in time.
@@ -82,7 +97,7 @@ func (l *LinkedList) walkList(dropPast int64) {
 			break
 		}
 
-		sum = sum + currentNode.Payload.Quantity
+		sum = sum + currentNode.PayloadTrade.Quantity
 		length++
 
 		currentNode = currentNode.nextNode // advance in list
@@ -93,24 +108,4 @@ func (l *LinkedList) walkList(dropPast int64) {
 	// go fmt.Printf("%.3f --- %.f \n", sum/length, length)
 
 	go l.spoolTo.Write([]byte(fmt.Sprintf("%.3f --- %.f \n", sum/length, length)))
-}
-
-// printData Method only for testing.
-func (l *LinkedList) printData() {
-	currentNode := l.Head
-
-	var length int
-
-	fmt.Print("Printing List\n")
-
-	for currentNode.nextNode != nil {
-		fmt.Println(currentNode.Payload)
-
-		length++
-		currentNode = currentNode.nextNode
-	}
-
-	fmt.Print("\n")
-	fmt.Print("Length: ", length)
-	fmt.Print("\n")
 }
