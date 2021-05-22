@@ -54,8 +54,14 @@ loop:
 			}
 		}
 	}
+
+	t.Processor.Terminate()
 }
 
 func (t *ConvertorTrade) Payload() converters.Feed {
 	return t.payload
+}
+
+func (t *ConvertorTrade) Terminate() {
+	t.Stop <- struct{}{}
 }

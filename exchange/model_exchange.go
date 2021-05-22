@@ -49,25 +49,25 @@ func NewExchange(cfg Config) (*Exchange, error) {
 }
 
 // ReadMessages Method reads websocket feed and pushes it to a converter payload channel.
-func (c *Exchange) ReadMessages(conv converters.IConverter) {
+func (e *Exchange) ReadMessages(conv converters.IConverter) {
 	converterPayload := conv.Payload()
 	defer close(converterPayload)
 
-	defer close(c.interrupt)
+	defer close(e.interrupt)
 
 	go conv.Convert()
 
 loop:
 	for {
 		select {
-		case <-c.interrupt:
+		case <-e.interrupt:
 			{
 				fmt.Println("interrupt")
 				break loop
 			}
 		default:
 			{
-				_, message, errRead := c.connection.ReadMessage()
+				_, message, errRead := e.connection.ReadMessage()
 				if errRead != nil {
 					fmt.Println("read glitch:", errRead)
 					return
@@ -77,4 +77,6 @@ loop:
 			}
 		}
 	}
+
+	e.Stop <- struct{}{}
 }

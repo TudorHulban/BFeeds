@@ -15,31 +15,24 @@ func main() {
 	stopProcessor := make(chan struct{})
 	processorTimeList := timelist.NewLinkedList(1, stopProcessor, os.Stdout)
 
-	defer func() {
-		stopProcessor <- struct{}{}
-		close(stopProcessor)
-	}()
-
 	// creation of a trade converter
 	stopConverter := make(chan struct{})
 	conv := trade.NewTradeConverter(processorTimeList, stopConverter)
 
-	defer func() {
-		stopConverter <- struct{}{}
-		close(stopConverter)
-	}()
-
 	// creation of a exchange
-	client, errNew := exchange.NewExchange(exchange.Config{
+	exch, errNew := exchange.NewExchange(exchange.Config{
 		URI: urlBinance,
 	})
 	if errNew != nil {
 		fmt.Println(errNew)
 		os.Exit(1)
 	}
-	defer close(client.Stop)
+	defer close(exch.Stop)
 
-	go client.ReadMessages(conv)
+	go exch.ReadMessages(conv)
 
-	<-client.Stop
+	<-exch.Stop
+
+	conv.Terminate()
+	close(stopConverter)
 }

@@ -17,4 +17,5 @@ type IProcessor interface {
 	Listen(locationOffsetMiliseconds int64)
 	Payload() Feed // provides channel to receive trade payload
 	SendBufferTo(io.Writer)
+	Terminate()
 }

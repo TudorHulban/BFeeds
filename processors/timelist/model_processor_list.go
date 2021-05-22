@@ -41,7 +41,7 @@ loop:
 		select {
 		case <-l.Stop:
 			{
-				log.Println("stopping list")
+				log.Println("stopping processor time list")
 				break loop
 			}
 
@@ -77,6 +77,10 @@ func (l *LinkedList) SendBufferTo(w io.Writer) {
 	w.Write([]byte("\n"))
 	w.Write([]byte("Length: " + strconv.Itoa(length)))
 	w.Write([]byte("\n"))
+}
+
+func (l *LinkedList) Terminate() {
+	l.Stop <- struct{}{}
 }
 
 func (l *LinkedList) prepend(n *node, locationOffsetMiliseconds int64) {
