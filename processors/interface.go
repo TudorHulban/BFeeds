@@ -11,8 +11,10 @@ type PayloadTrade struct {
 	Quantity            float64
 }
 
+type Feed chan PayloadTrade
+
 type IProcessor interface {
 	Listen(locationOffsetMiliseconds int64)
-	Payload() chan PayloadTrade // provides channel to receive trade payload
+	Payload() Feed // provides channel to receive trade payload
 	SendBufferTo(io.Writer)
 }

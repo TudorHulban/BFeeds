@@ -9,25 +9,28 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type Trade struct {
+type ConvertorTrade struct {
+	Processor processors.IProcessor
+
 	payload chan []byte
 	Stop    chan struct{}
 }
 
-func NewTradeConverter(stop chan struct{}) *Trade {
-	return &Trade{
-		payload: make(chan []byte),
-		Stop:    stop,
+func NewTradeConverter(proc processors.IProcessor, stop chan struct{}) *ConvertorTrade {
+	return &ConvertorTrade{
+		Processor: proc,
+		payload:   make(chan []byte),
+		Stop:      stop,
 	}
 }
 
 // Convert Method converts Binance messages and pushes them further to a processor.
-func (t *Trade) Convert(proc processors.IProcessor) {
-	processorPayload := proc.Payload()
+func (t *ConvertorTrade) Convert() {
+	processorPayload := t.Processor.Payload()
 	defer close(processorPayload)
 
 	// the payload channel should be defined prior to start listening
-	go proc.Listen(0)
+	go t.Processor.Listen(0)
 
 loop:
 	for {
@@ -53,6 +56,6 @@ loop:
 	}
 }
 
-func (t *Trade) Payload() converters.Feed {
+func (t *ConvertorTrade) Payload() converters.Feed {
 	return t.payload
 }

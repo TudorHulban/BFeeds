@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bnb/converters"
 	"bnb/converters/trade"
 	"bnb/exchange"
+	"bnb/processors/timelist"
 	"fmt"
 	"os"
 )
@@ -11,21 +11,35 @@ import (
 const urlBinance = "wss://stream.binance.com:9443/ws/bnbusdt@trade"
 
 func main() {
+	// creation of a processor
+	stopProcessor := make(chan struct{})
+	processorTimeList := timelist.NewLinkedList(1, stopProcessor, os.Stdout)
+
+	defer func() {
+		stopProcessor <- struct{}{}
+		close(stopProcessor)
+	}()
+
 	// creation of a trade converter
-	conv := trade.NewTradeConverterr()
+	stopConverter := make(chan struct{})
+	conv := trade.NewTradeConverter(processorTimeList, stopConverter)
 
-	cfg := exchange.Config{
+	defer func() {
+		stopConverter <- struct{}{}
+		close(stopConverter)
+	}()
+
+	// creation of a exchange
+	client, errNew := exchange.NewExchange(exchange.Config{
 		URI: urlBinance,
-	}
-
-	client, errNew := exchange.NewExchange(cfg, 3, os.Stdout)
+	})
 	if errNew != nil {
 		fmt.Println(errNew)
 		os.Exit(1)
 	}
-	defer client.CleanUp()
+	defer close(client.Stop)
 
-	go client.ReadMessages()
+	go client.ReadMessages(conv)
 
 	<-client.Stop
 }
