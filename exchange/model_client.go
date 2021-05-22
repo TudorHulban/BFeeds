@@ -3,6 +3,7 @@ package exchange
 import (
 	"bnb/conversion"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,9 +27,10 @@ type Client struct {
 	interrupt chan os.Signal
 
 	retentionSeconds int
+	spoolTo          io.Writer
 }
 
-func NewClient(cfg Config, retentionSeconds int) (*Client, error) {
+func NewClient(cfg Config, retentionSeconds int, spoolTo io.Writer) (*Client, error) {
 	url, errParse := url.Parse(cfg.URI)
 	if errParse != nil {
 		return nil, errParse
@@ -48,14 +50,23 @@ func NewClient(cfg Config, retentionSeconds int) (*Client, error) {
 		Stop:             make(chan struct{}),
 		interrupt:        interrupt,
 		retentionSeconds: retentionSeconds,
+		spoolTo:          spoolTo,
 	}, nil
 }
 
 func (c *Client) ReadMessages() {
 	payload := make(chan []byte)
-	stopConversion := make(chan struct{})
+	defer close(payload)
 
-	converter := conversion.NewTrade(payload, stopConversion, c.retentionSeconds)
+	stopConversion := make(chan struct{})
+	defer close(stopConversion)
+
+	converter := conversion.NewTrade(payload, stopConversion, c.retentionSeconds, c.spoolTo)
+	defer func() {
+		converter.Stop <- struct{}{}
+		c.Stop <- struct{}{}
+	}()
+
 	go converter.Convert()
 
 loop:
@@ -78,12 +89,6 @@ loop:
 			}
 		}
 	}
-
-	converter.Stop <- struct{}{}
-	close(payload)
-	close(stopConversion)
-
-	c.Stop <- struct{}{}
 }
 
 func (c *Client) CleanUp() {

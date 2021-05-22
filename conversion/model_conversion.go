@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"bnb/list"
+	"io"
 	"log"
 
 	"github.com/tidwall/gjson"
@@ -11,21 +12,30 @@ type Trade struct {
 	Feed             chan []byte
 	Stop             chan struct{}
 	retentionSeconds int
+	spoolTo          io.Writer
 }
 
-func NewTrade(feed chan []byte, stop chan struct{}, retentionSeconds int) *Trade {
+func NewTrade(feed chan []byte, stop chan struct{}, retentionSeconds int, spoolTo io.Writer) *Trade {
 	return &Trade{
 		Feed:             feed,
 		Stop:             stop,
 		retentionSeconds: retentionSeconds,
+		spoolTo:          spoolTo,
 	}
 }
 
 func (t *Trade) Convert() {
 	payload := make(chan timelist.Payload)
-	stop := make(chan struct{})
+	defer close(payload)
 
-	list := timelist.NewLinkedList(t.retentionSeconds, payload, stop)
+	stopList := make(chan struct{})
+	defer close(stopList)
+
+	list := timelist.NewLinkedList(t.retentionSeconds, t.spoolTo, payload, stopList)
+	defer func() {
+		list.Stop <- struct{}{}
+	}()
+
 	go list.Listen(0)
 
 loop:
@@ -50,7 +60,4 @@ loop:
 			}
 		}
 	}
-
-	list.Stop <- struct{}{}
-	list.CleanUp()
 }

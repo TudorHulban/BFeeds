@@ -2,6 +2,7 @@ package timelist
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"time"
 )
@@ -24,14 +25,16 @@ type LinkedList struct {
 	Trades          chan Payload
 	Stop            chan struct{}
 	TimeSpanSeconds int
+	spoolTo         io.Writer
 }
 
-func NewLinkedList(seconds int, payload chan Payload, stop chan struct{}) *LinkedList {
+func NewLinkedList(seconds int, spoolTo io.Writer, payload chan Payload, stop chan struct{}) *LinkedList {
 	return &LinkedList{
 		Head:            &node{},
 		Trades:          payload,
 		Stop:            stop,
 		TimeSpanSeconds: seconds,
+		spoolTo:         spoolTo,
 	}
 }
 
@@ -66,14 +69,15 @@ func (l *LinkedList) prepend(n *node, locationOffsetMiliseconds int64) {
 	l.walkList(dropAfterTimeMiliseconds)
 }
 
-func (l *LinkedList) walkList(dropAfter int64) {
+// walkList Internal method drops data past specified point in time.
+func (l *LinkedList) walkList(dropPast int64) {
 	currentNode := l.Head
 
 	var length float64
 	var sum float64
 
 	for currentNode.nextNode != nil {
-		if dropAfter > currentNode.UNIXTimeMiliseconds {
+		if dropPast > currentNode.UNIXTimeMiliseconds {
 			currentNode.nextNode = nil
 			break
 		}
@@ -86,7 +90,9 @@ func (l *LinkedList) walkList(dropAfter int64) {
 	}
 
 	// go fmt.Printf("%d ---- %.3f --- %.f \n", time.Now().Unix()*1000, sum/length, length)
-	go fmt.Printf("%.3f --- %.f \n", sum/length, length)
+	// go fmt.Printf("%.3f --- %.f \n", sum/length, length)
+
+	go l.spoolTo.Write([]byte(fmt.Sprintf("%.3f --- %.f \n", sum/length, length)))
 }
 
 // printData Method only for testing.
@@ -107,11 +113,4 @@ func (l *LinkedList) printData() {
 	fmt.Print("\n")
 	fmt.Print("Length: ", length)
 	fmt.Print("\n")
-}
-
-func (l *LinkedList) CleanUp() {
-	close(l.Trades)
-	close(l.Stop)
-
-	// l.printData()
 }
