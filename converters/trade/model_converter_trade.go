@@ -43,6 +43,10 @@ loop:
 
 		case payload := <-t.payload:
 			{
+				if len(payload) == 0 {
+					continue
+				}
+
 				result := gjson.GetManyBytes(payload, "s", "T", "q", "p")
 
 				processorPayload <- processors.PayloadTrade{

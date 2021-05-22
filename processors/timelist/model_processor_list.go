@@ -16,11 +16,12 @@ type node struct {
 }
 
 type LinkedList struct {
-	head             *node
-	payload          chan processors.PayloadTrade
-	Stop             chan struct{}
-	retentionSeconds int
-	spoolTo          []io.Writer
+	head                      *node
+	payload                   chan processors.PayloadTrade
+	Stop                      chan struct{}
+	spoolTo                   []io.Writer
+	retentionSeconds          int
+	locationOffsetMiliseconds int64
 }
 
 func NewLinkedList(retentionSeconds int, stop chan struct{}, spoolTo ...io.Writer) *LinkedList {
@@ -36,6 +37,8 @@ func NewLinkedList(retentionSeconds int, stop chan struct{}, spoolTo ...io.Write
 // Listen Method listens for events coming with different offsets.
 // For GMT: 3 * 3600 * 1000 = 10800000
 func (l *LinkedList) Listen(locationOffsetMiliseconds int64) {
+	l.locationOffsetMiliseconds = locationOffsetMiliseconds
+
 loop:
 	for {
 		select {
@@ -49,7 +52,7 @@ loop:
 			{
 				l.prepend(&node{
 					PayloadTrade: payload,
-				}, locationOffsetMiliseconds)
+				})
 			}
 		}
 	}
@@ -83,11 +86,11 @@ func (l *LinkedList) Terminate() {
 	l.Stop <- struct{}{}
 }
 
-func (l *LinkedList) prepend(n *node, locationOffsetMiliseconds int64) {
+func (l *LinkedList) prepend(n *node) {
 	n.nextNode = l.head
 	l.head = n
 
-	dropAfterTimeMiliseconds := time.Now().Unix()*1000 - locationOffsetMiliseconds - int64(l.retentionSeconds*1000)
+	dropAfterTimeMiliseconds := time.Now().Unix()*1000 - l.locationOffsetMiliseconds - int64(l.retentionSeconds*1000)
 
 	l.walkList(dropAfterTimeMiliseconds) // synchronous to preserve data
 }
