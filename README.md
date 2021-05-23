@@ -6,3 +6,9 @@ experimenting linked list
 go run -race main.go 
 ```
 
+## Profiling
+Resources
+```html
+https://flaviocopes.com/golang-profiling/
+```
+
