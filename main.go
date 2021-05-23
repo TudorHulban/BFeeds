@@ -6,14 +6,13 @@ import (
 	"bnb/processors/rolling"
 	"fmt"
 	"os"
-
-	"github.com/pkg/profile"
+	// "github.com/pkg/profile"
 )
 
 const urlBinance = "wss://stream.binance.com:9443/ws/bnbusdt@trade"
 
 func main() {
-	defer profile.Start(profile.MemProfile).Stop()
+	// defer profile.Start(profile.MemProfile).Stop()
 
 	// creation of a processor
 	processorTimeList := rolling.NewLinkedList(1, os.Stdout)

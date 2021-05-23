@@ -20,7 +20,8 @@ type Config struct {
 // Exchange Concentrates websocket connection information.
 type Exchange struct {
 	connection *websocket.Conn
-	url        url.URL
+
+	url url.URL
 
 	stop      chan struct{}
 	interrupt chan os.Signal
