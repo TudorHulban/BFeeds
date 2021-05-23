@@ -1,8 +1,9 @@
 package main
 
 import (
-	"bnb/converters/trade"
+	"bnb/converters/streams"
 	"bnb/exchange"
+	"bnb/processors"
 	"bnb/processors/rolling"
 	"fmt"
 	"os"
@@ -15,10 +16,12 @@ func main() {
 	// defer profile.Start(profile.MemProfile).Stop()
 
 	// creation of a processor
-	processorTimeList := rolling.NewLinkedList(1, os.Stdout)
+	processor := rolling.NewLinkedList(1, os.Stdout)
 
 	// creation of a trade converter
-	converter := trade.NewTradeConverter(processorTimeList)
+	// converter := trade.NewTradeConverter(processorTimeList)
+
+	converter := streams.NewStreamsConverter([]processors.IProcessor{processor}...)
 
 	// creation of a exchange
 	exch, errNew := exchange.NewExchange(exchange.Config{

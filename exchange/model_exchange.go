@@ -54,7 +54,7 @@ func (e *Exchange) ReadMessages(conv converters.IConverter) {
 	converterPayload := conv.Payload()
 	defer close(converterPayload)
 
-	go conv.Convert()
+	go conv.Convert(0)
 
 loop:
 	for {

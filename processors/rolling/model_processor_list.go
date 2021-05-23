@@ -24,6 +24,8 @@ type RollingList struct {
 	retentionSeconds          int
 }
 
+var _ processors.IProcessor = (*RollingList)(nil)
+
 func NewLinkedList(retentionSeconds int, spoolTo ...io.Writer) *RollingList {
 	return &RollingList{
 		head:             &node{},
@@ -58,8 +60,10 @@ loop:
 	}
 }
 
-func (l *RollingList) Payload() processors.Feed {
-	return l.payload
+func (l *RollingList) Payload() processors.StreamData {
+	return processors.StreamData{
+		Feed: l.payload,
+	}
 }
 
 // SendBufferTo Method would send current boofer to the writer.

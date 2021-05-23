@@ -29,7 +29,7 @@ func (t *ConvertorTrade) Convert() {
 	go t.processor.Listen(0)
 	defer t.processor.Terminate()
 
-	processorPayload := t.processor.Payload()
+	processorPayload := t.processor.Payload().Feed
 
 loop:
 	for {
