@@ -20,9 +20,9 @@ type Config struct {
 // Exchange Concentrates websocket connection information.
 type Exchange struct {
 	connection *websocket.Conn
-	URL        url.URL
+	url        url.URL
 
-	Stop      chan struct{}
+	stop      chan struct{}
 	interrupt chan os.Signal
 }
 
@@ -42,8 +42,8 @@ func NewExchange(cfg Config) (*Exchange, error) {
 
 	return &Exchange{
 		connection: conn,
-		URL:        *url,
-		Stop:       make(chan struct{}),
+		url:        *url,
+		stop:       make(chan struct{}),
 		interrupt:  interrupt,
 	}, nil
 }
@@ -52,8 +52,6 @@ func NewExchange(cfg Config) (*Exchange, error) {
 func (e *Exchange) ReadMessages(conv converters.IConverter) {
 	converterPayload := conv.Payload()
 	defer close(converterPayload)
-
-	defer close(e.interrupt)
 
 	go conv.Convert()
 
@@ -78,5 +76,21 @@ loop:
 		}
 	}
 
-	e.Stop <- struct{}{}
+	e.Terminate()
+}
+
+// Work Method blocking for work to be done.
+func (e *Exchange) Work() {
+	<-e.stop
+}
+
+func (e *Exchange) Terminate() {
+	defer e.cleanUp()
+
+	e.stop <- struct{}{}
+}
+
+func (e *Exchange) cleanUp() {
+	close(e.interrupt)
+	close(e.stop)
 }

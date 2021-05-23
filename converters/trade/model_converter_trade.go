@@ -10,32 +10,31 @@ import (
 )
 
 type ConvertorTrade struct {
-	Processor processors.IProcessor
+	processor processors.IProcessor
 
 	payload chan []byte
-	Stop    chan struct{}
+	stop    chan struct{}
 }
 
-func NewTradeConverter(proc processors.IProcessor, stop chan struct{}) *ConvertorTrade {
+func NewTradeConverter(proc processors.IProcessor) *ConvertorTrade {
 	return &ConvertorTrade{
-		Processor: proc,
+		processor: proc,
 		payload:   make(chan []byte),
-		Stop:      stop,
+		stop:      make(chan struct{}),
 	}
 }
 
 // Convert Method converts Binance messages and pushes them further to a processor.
 func (t *ConvertorTrade) Convert() {
-	processorPayload := t.Processor.Payload()
-	defer close(processorPayload)
+	go t.processor.Listen(0)
+	defer t.processor.Terminate()
 
-	// the payload channel should be defined prior to start listening
-	go t.Processor.Listen(0)
+	processorPayload := t.processor.Payload()
 
 loop:
 	for {
 		select {
-		case <-t.Stop:
+		case <-t.stop:
 			{
 				log.Println("stopping converter")
 				break loop
@@ -58,8 +57,6 @@ loop:
 			}
 		}
 	}
-
-	t.Processor.Terminate()
 }
 
 func (t *ConvertorTrade) Payload() converters.Feed {
@@ -67,5 +64,11 @@ func (t *ConvertorTrade) Payload() converters.Feed {
 }
 
 func (t *ConvertorTrade) Terminate() {
-	t.Stop <- struct{}{}
+	defer t.cleanUp()
+
+	t.stop <- struct{}{}
+}
+
+func (t *ConvertorTrade) cleanUp() {
+	close(t.stop)
 }

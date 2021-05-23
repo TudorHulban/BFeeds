@@ -1,4 +1,4 @@
-package timelist
+package rolling
 
 import (
 	"testing"

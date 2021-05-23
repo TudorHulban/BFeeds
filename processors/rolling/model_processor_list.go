@@ -1,4 +1,4 @@
-package timelist
+package rolling
 
 import (
 	"bnb/processors"
@@ -15,20 +15,20 @@ type node struct {
 	nextNode *node
 }
 
-type LinkedList struct {
+type RollingList struct {
 	head                      *node
 	payload                   chan processors.PayloadTrade
-	Stop                      chan struct{}
+	stop                      chan struct{}
 	spoolTo                   []io.Writer
-	retentionSeconds          int
 	locationOffsetMiliseconds int64
+	retentionSeconds          int
 }
 
-func NewLinkedList(retentionSeconds int, stop chan struct{}, spoolTo ...io.Writer) *LinkedList {
-	return &LinkedList{
+func NewLinkedList(retentionSeconds int, spoolTo ...io.Writer) *RollingList {
+	return &RollingList{
 		head:             &node{},
 		payload:          make(chan processors.PayloadTrade),
-		Stop:             stop,
+		stop:             make(chan struct{}),
 		retentionSeconds: retentionSeconds,
 		spoolTo:          spoolTo,
 	}
@@ -36,13 +36,13 @@ func NewLinkedList(retentionSeconds int, stop chan struct{}, spoolTo ...io.Write
 
 // Listen Method listens for events coming with different offsets.
 // For GMT: 3 * 3600 * 1000 = 10800000
-func (l *LinkedList) Listen(locationOffsetMiliseconds int64) {
+func (l *RollingList) Listen(locationOffsetMiliseconds int64) {
 	l.locationOffsetMiliseconds = locationOffsetMiliseconds
 
 loop:
 	for {
 		select {
-		case <-l.Stop:
+		case <-l.stop:
 			{
 				log.Println("stopping processor time list")
 				break loop
@@ -58,12 +58,12 @@ loop:
 	}
 }
 
-func (l *LinkedList) Payload() processors.Feed {
+func (l *RollingList) Payload() processors.Feed {
 	return l.payload
 }
 
 // SendBufferTo Method would send current boofer to the writer.
-func (l *LinkedList) SendBufferTo(w io.Writer) {
+func (l *RollingList) SendBufferTo(w io.Writer) {
 	currentNode := l.head
 
 	var length int
@@ -82,11 +82,13 @@ func (l *LinkedList) SendBufferTo(w io.Writer) {
 	w.Write([]byte("\n"))
 }
 
-func (l *LinkedList) Terminate() {
-	l.Stop <- struct{}{}
+func (l *RollingList) Terminate() {
+	defer l.cleanUp()
+
+	l.stop <- struct{}{}
 }
 
-func (l *LinkedList) prepend(n *node) {
+func (l *RollingList) prepend(n *node) {
 	n.nextNode = l.head
 	l.head = n
 
@@ -96,7 +98,7 @@ func (l *LinkedList) prepend(n *node) {
 }
 
 // walkList Internal method drops data past specified point in time.
-func (l *LinkedList) walkList(dropPast int64) {
+func (l *RollingList) walkList(dropPast int64) {
 	currentNode := l.head
 
 	var length float64
@@ -112,7 +114,6 @@ func (l *LinkedList) walkList(dropPast int64) {
 		length++
 
 		currentNode = currentNode.nextNode // advance in list
-
 	}
 
 	if len(l.spoolTo) == 0 {
@@ -122,4 +123,9 @@ func (l *LinkedList) walkList(dropPast int64) {
 	for _, writer := range l.spoolTo {
 		go writer.Write([]byte(fmt.Sprintf("%.3f --- %.f \n", sum/length, length)))
 	}
+}
+
+func (l *RollingList) cleanUp() {
+	close(l.stop)
+	close(l.payload)
 }
