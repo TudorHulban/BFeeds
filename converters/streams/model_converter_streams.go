@@ -3,7 +3,6 @@ package streams
 import (
 	"bnb/converters"
 	"bnb/processors"
-
 	"log"
 
 	"github.com/tidwall/gjson"

@@ -17,7 +17,7 @@ type node struct {
 
 type RollingList struct {
 	head                      *node
-	payload                   chan processors.PayloadTrade
+	streamData                processors.StreamData
 	stop                      chan struct{}
 	spoolTo                   []io.Writer
 	locationOffsetMiliseconds int64
@@ -26,10 +26,13 @@ type RollingList struct {
 
 var _ processors.IProcessor = (*RollingList)(nil)
 
-func NewLinkedList(retentionSeconds int, spoolTo ...io.Writer) *RollingList {
+func NewLinkedList(symbol string, retentionSeconds int, spoolTo ...io.Writer) *RollingList {
 	return &RollingList{
-		head:             &node{},
-		payload:          make(chan processors.PayloadTrade),
+		head: &node{},
+		streamData: processors.StreamData{
+			Stream: symbol,
+			Feed:   make(chan processors.PayloadTrade),
+		},
 		stop:             make(chan struct{}),
 		retentionSeconds: retentionSeconds,
 		spoolTo:          spoolTo,
@@ -50,7 +53,7 @@ loop:
 				break loop
 			}
 
-		case payload := <-l.payload:
+		case payload := <-l.streamData.Feed:
 			{
 				l.prepend(&node{
 					PayloadTrade: payload,
@@ -61,9 +64,7 @@ loop:
 }
 
 func (l *RollingList) Payload() processors.StreamData {
-	return processors.StreamData{
-		Feed: l.payload,
-	}
+	return l.streamData
 }
 
 // SendBufferTo Method would send current boofer to the writer.
@@ -131,5 +132,5 @@ func (l *RollingList) walkList(dropPast int64) {
 
 func (l *RollingList) cleanUp() {
 	close(l.stop)
-	close(l.payload)
+	close(l.streamData.Feed)
 }

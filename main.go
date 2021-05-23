@@ -10,18 +10,20 @@ import (
 	// "github.com/pkg/profile"
 )
 
-const urlBinance = "wss://stream.binance.com:9443/ws/bnbusdt@trade"
+// const urlBinance = "wss://stream.binance.com:9443/ws/bnbusdt@trade"
+const urlBinance = "wss://stream.binance.com:9443/stream?streams=bnbusdt@trade/btcusdt@trade"
 
 func main() {
 	// defer profile.Start(profile.MemProfile).Stop()
 
 	// creation of a processor
-	processor := rolling.NewLinkedList(1, os.Stdout)
+	processorBNB := rolling.NewLinkedList("bnbusdt@trade", 1, os.Stdout)
+	processorBTC := rolling.NewLinkedList("btcusdt@trade", 3, os.Stdout)
 
 	// creation of a trade converter
 	// converter := trade.NewTradeConverter(processorTimeList)
 
-	converter := streams.NewStreamsConverter([]processors.IProcessor{processor}...)
+	converter := streams.NewStreamsConverter([]processors.IProcessor{processorBNB, processorBTC}...)
 
 	// creation of a exchange
 	exch, errNew := exchange.NewExchange(exchange.Config{
