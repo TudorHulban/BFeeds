@@ -13,9 +13,16 @@ type PayloadTrade struct {
 
 type Feed chan PayloadTrade
 
+type StreamData struct {
+	Stream string
+	Feed   Feed
+}
+
 type IProcessor interface {
 	Listen(locationOffsetMiliseconds int64)
-	Payload() Feed // provides channel to receive trade payload
+
+	// provides symbol and channel to receive trade payload
+	Payload() StreamData
 	SendBufferTo(io.Writer)
 	Terminate()
 }
