@@ -51,7 +51,7 @@ func NewExchange(cfg Config) (*Exchange, error) {
 
 // ReadMessages Method reads websocket feed and pushes it to a converter payload channel.
 func (e *Exchange) ReadMessages(conv converters.IConverter) {
-	converterPayload := conv.Payload()
+	converterPayload := conv.Payload().Feed
 	defer close(converterPayload)
 
 	go conv.Convert(0)

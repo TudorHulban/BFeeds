@@ -126,7 +126,7 @@ func (l *RollingList) walkList(dropPast int64) {
 	}
 
 	for _, writer := range l.spoolTo {
-		go writer.Write([]byte(fmt.Sprintf("%.3f --- %.f \n", sum/length, length)))
+		go writer.Write([]byte(fmt.Sprintf("%s: %.3f --- %.f \n", l.streamData.Stream, sum/length, length)))
 	}
 }
 

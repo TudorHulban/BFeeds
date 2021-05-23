@@ -7,11 +7,14 @@ import (
 	"bnb/processors/rolling"
 	"fmt"
 	"os"
+	"strings"
 	// "github.com/pkg/profile"
 )
 
 // const urlBinance = "wss://stream.binance.com:9443/ws/bnbusdt@trade"
-const urlBinance = "wss://stream.binance.com:9443/stream?streams=bnbusdt@trade/btcusdt@trade"
+// const urlBinance = "wss://stream.binance.com:9443/stream?streams=bnbusdt@trade/btcusdt@trade"
+
+const rootStreamBinance = "wss://stream.binance.com:9443/stream?streams="
 
 func main() {
 	// defer profile.Start(profile.MemProfile).Stop()
@@ -25,9 +28,11 @@ func main() {
 
 	converter := streams.NewStreamsConverter([]processors.IProcessor{processorBNB, processorBTC}...)
 
+	urlStreams := rootStreamBinance + strings.Join(converter.Payload().Symbols, "/")
+
 	// creation of a exchange
 	exch, errNew := exchange.NewExchange(exchange.Config{
-		URI: urlBinance,
+		URI: urlStreams,
 	})
 	if errNew != nil {
 		fmt.Println(errNew)

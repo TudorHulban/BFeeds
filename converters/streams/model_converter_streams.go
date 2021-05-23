@@ -15,6 +15,8 @@ type ConvertorStreams struct {
 	stop    chan struct{}
 }
 
+var _ converters.IConverter = (*ConvertorStreams)(nil)
+
 func NewStreamsConverter(proc ...processors.IProcessor) *ConvertorStreams {
 	return &ConvertorStreams{
 		processors: proc,
@@ -62,8 +64,17 @@ loop:
 	}
 }
 
-func (t *ConvertorStreams) Payload() converters.Feed {
-	return t.payload
+func (t *ConvertorStreams) Payload() converters.Streams {
+	symbols := make([]string, len(t.processors))
+
+	for ix, symbol := range t.processors {
+		symbols[ix] = symbol.Payload().Stream
+	}
+
+	return converters.Streams{
+		Symbols: symbols,
+		Feed:    t.payload,
+	}
 }
 
 func (t *ConvertorStreams) Terminate() {
