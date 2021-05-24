@@ -50,6 +50,7 @@ window.addEventListener("load", function(evt) {
             return false;
         }
         ws.close();
+        ws = null;
         return false;
     };
 });
