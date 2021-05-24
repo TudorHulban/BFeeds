@@ -3,6 +3,7 @@ package main
 import (
 	"bnb/converters/streams"
 	"bnb/exchange"
+	"bnb/fiber"
 	"bnb/processors"
 	"bnb/processors/rolling"
 	"fmt"
@@ -21,12 +22,12 @@ func main() {
 
 	// creation of a processor
 	processorBNB := rolling.NewLinkedList("bnbusdt@trade", 1, os.Stdout)
-	processorBTC := rolling.NewLinkedList("btcusdt@trade", 3, os.Stdout)
+	// processorBTC := rolling.NewLinkedList("btcusdt@trade", 3, os.Stdout)
 
 	// creation of a trade converter
 	// converter := trade.NewTradeConverter(processorTimeList)
 
-	converter := streams.NewStreamsConverter([]processors.IProcessor{processorBNB, processorBTC}...)
+	converter := streams.NewStreamsConverter([]processors.IProcessor{processorBNB}...)
 
 	urlStreams := rootStreamBinance + strings.Join(converter.Payload().Symbols, "/")
 
@@ -38,6 +39,10 @@ func main() {
 		fmt.Println(errNew)
 		os.Exit(1)
 	}
+
+	// HTTP Server
+	serv := fiber.NewHTTPServer()
+	go serv.Work()
 
 	go exch.ReadMessages(converter)
 	exch.Work()
