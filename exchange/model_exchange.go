@@ -67,6 +67,7 @@ loop:
 		default:
 			{
 				_, message, errRead := e.connection.ReadMessage()
+
 				if errRead != nil {
 					fmt.Println("read glitch:", errRead)
 					return

@@ -9,7 +9,8 @@ import (
 )
 
 type HTTPServer struct {
-	app *fiber.App
+	app     *fiber.App
+	payload chan []byte
 }
 
 func NewHTTPServer() *HTTPServer {
@@ -19,13 +20,18 @@ func NewHTTPServer() *HTTPServer {
 		Views: engine,
 	})
 
+	res := &HTTPServer{
+		app:     app,
+		payload: make(chan []byte),
+	}
+
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Render("page_template", fiber.Map{
-			"Link": "ws://" + c.Hostname() + "/ws",
+			"Link": "ws://localhost:7000/wsendpoint/1",
 		})
 	})
 
-	app.Use("/ws", func(c *fiber.Ctx) error {
+	app.Use("/wsendpoint", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
 			c.Locals("allowed", true)
 
@@ -35,41 +41,39 @@ func NewHTTPServer() *HTTPServer {
 		return fiber.ErrUpgradeRequired
 	})
 
-	app.Get("/ws/:id", websocket.New(handlerWebSocket))
+	app.Get("/wsendpoint/:id", websocket.New(res.handlerWebSocket))
 
-	return &HTTPServer{
-		app: app,
-	}
+	return res
 }
 
 func (h *HTTPServer) Work() {
+	defer h.cleanUp()
+
 	log.Fatal(h.app.Listen(":7000"))
 }
 
-func handlerWebSocket(c *websocket.Conn) {
+func (h *HTTPServer) Write(msg []byte) (int, error) {
+	h.payload <- msg
+
+	return 0, nil
+}
+
+func (h *HTTPServer) handlerWebSocket(c *websocket.Conn) {
 	log.Println(c.Locals("allowed"))  // true
 	log.Println(c.Params("id"))       // 123
 	log.Println(c.Query("v"))         // 1.0
 	log.Println(c.Cookies("session")) // ""
 
-	// websocket.Conn bindings https://pkg.go.dev/github.com/fasthttp/websocket?tab=doc#pkg-index
-	var (
-		messageType int
-		msg         []byte
-		err         error
-	)
-
 	for {
-		if messageType, msg, err = c.ReadMessage(); err != nil {
-			log.Println("read:", err)
-			break
-		}
+		message := <-h.payload
 
-		log.Printf("recv: %s", msg)
-
-		if err = c.WriteMessage(messageType, msg); err != nil {
+		if err := c.WriteMessage(1, message); err != nil {
 			log.Println("write:", err)
 			break
 		}
 	}
+}
+
+func (h *HTTPServer) cleanUp() {
+	close(h.payload)
 }

@@ -20,8 +20,12 @@ const rootStreamBinance = "wss://stream.binance.com:9443/stream?streams="
 func main() {
 	// defer profile.Start(profile.MemProfile).Stop()
 
+	// HTTP Server
+	serv := fiber.NewHTTPServer()
+	go serv.Work()
+
 	// creation of a processor
-	processorBNB := rolling.NewLinkedList("bnbusdt@trade", 1, os.Stdout)
+	processorBNB := rolling.NewLinkedList("bnbusdt@trade", 1, serv)
 	// processorBTC := rolling.NewLinkedList("btcusdt@trade", 3, os.Stdout)
 
 	// creation of a trade converter
@@ -39,10 +43,6 @@ func main() {
 		fmt.Println(errNew)
 		os.Exit(1)
 	}
-
-	// HTTP Server
-	serv := fiber.NewHTTPServer()
-	go serv.Work()
 
 	go exch.ReadMessages(converter)
 	exch.Work()
