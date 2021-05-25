@@ -59,11 +59,6 @@ func (h *HTTPServer) Write(msg []byte) (int, error) {
 }
 
 func (h *HTTPServer) handlerWebSocket(c *websocket.Conn) {
-	log.Println(c.Locals("allowed"))  // true
-	log.Println(c.Params("id"))       // 123
-	log.Println(c.Query("v"))         // 1.0
-	log.Println(c.Cookies("session")) // ""
-
 	for {
 		message := <-h.payload
 
